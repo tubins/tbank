@@ -1,0 +1,123 @@
+version: "3.8"
+
+services:
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - tbanks-network
+  configserver:
+    image: tubins/configserver:latest
+    ports:
+      - "8087:8087"
+    networks:
+      - tbanks-network
+    depends_on:
+      - zipkin
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+  eurekaserver:
+    image: tubins/eurekaserver:latest
+    ports:
+      - "8070:8070"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+  accounts:
+    image: tubins/accounts:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+  cards:
+    image: tubins/cards:latest
+    ports:
+      - "9000:9000"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+  loans:
+    image: tubins/loans:latest
+    ports:
+      - "8090:8090"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+      - eurekaserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+  gatewayserver:
+    image: tubins/gatewayserver:latest
+    ports:
+      - "8072:8072"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+      - eurekaserver
+      - cards
+      - accounts
+      - loans
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 45s
+        max_attempts: 3
+        window: 180s
+    environment:
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eurekaserver:8070/eureka
+      SPRING_ZIPKIN_BASEURL: http://zipkin:9411/
+networks:
+  tbanks-network:

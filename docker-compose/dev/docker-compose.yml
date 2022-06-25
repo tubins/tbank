@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  configserver:
+    image: tubins/configserver:latest
+    ports:
+      - "8087:8087"
+    networks:
+      - tbanks-network
+  accounts:
+    image: tubins/accounts:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+  cards:
+    image: tubins/cards:latest
+    ports:
+      - "9000:9000"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+  loans:
+    image: tubins/loans:latest
+    ports:
+      - "8090:8090"
+    networks:
+      - tbanks-network
+    depends_on:
+      - configserver
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: configserver:http://configserver:8087/
+networks:
+  tbanks-network:
